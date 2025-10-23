@@ -1,154 +1,104 @@
-import { promises as fs } from 'fs';
-import path from 'path';
+import { query } from './database.js';
 
-const usersFile = './user_data/users.json';
-const profilesDir = './user_data/profiles';
-
-// Load users from file
-async function loadUsers() {
-  try {
-    const data = await fs.readFile(usersFile, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    // Return empty array if file doesn't exist
-    return [];
+// Simple password hash function (basic)
+function simpleHash(password) {
+  let hash = 0;
+  for (let i = 0; i < password.length; i++) {
+    const char = password.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
   }
-}
-
-// Save users to file
-async function saveUsers(users) {
-  await fs.mkdir(path.dirname(usersFile), { recursive: true });
-  await fs.writeFile(usersFile, JSON.stringify(users, null, 2));
-}
-
-// Save user profile
-async function saveUserProfile(userId, profileData) {
-  try {
-    await fs.mkdir(profilesDir, { recursive: true });
-    const profileFile = path.join(profilesDir, `${userId}.json`);
-    await fs.writeFile(profileFile, JSON.stringify(profileData, null, 2));
-  } catch (error) {
-    console.error('Error saving profile:', error);
-  }
-}
-
-// Load user profile
-async function loadUserProfile(userId) {
-  try {
-    const profileFile = path.join(profilesDir, `${userId}.json`);
-    const data = await fs.readFile(profileFile, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    return null;
-  }
+  return Math.abs(hash).toString(36);
 }
 
 export async function POST({ request }) {
+  const { action, email, password } = await request.json();
+  
+  if (!email || !password) {
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Email and password are required'
+    }), { status: 400 });
+  }
+
   try {
-    const { action, email, password } = await request.json();
-    
-    const users = await loadUsers();
-    
     if (action === 'register') {
       // Check if user already exists
-      const existingUser = users.find(u => u.email === email);
-      if (existingUser) {
+      const existingUser = await query(
+        'SELECT id FROM users WHERE email = $1', 
+        [email.toLowerCase().trim()]
+      );
+
+      if (existingUser.rows.length > 0) {
         return new Response(JSON.stringify({
           success: false,
           error: 'User already exists with this email'
         }), { status: 400 });
       }
-      
+
+      // Hash password
+      const hashedPassword = simpleHash(password);
+
       // Create new user
-      const newUser = {
-        email: email,
-        password: password, // Note: In production, use bcrypt for hashing
-        userId: 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString()
-      };
-      
-      users.push(newUser);
-      await saveUsers(users);
-      
-      // Create empty profile
-      const profileData = {
-        userId: newUser.userId,
-        email: newUser.email,
-        avatar: null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      await saveUserProfile(newUser.userId, profileData);
-      
+      const newUser = await query(
+        `INSERT INTO users (email, password, created_at) 
+         VALUES ($1, $2, $3) RETURNING id, email, created_at`,
+        [email.toLowerCase().trim(), hashedPassword, new Date().toISOString()]
+      );
+
+      console.log(`✅ New user registered: ${email}`);
+
       return new Response(JSON.stringify({
         success: true,
-        userId: newUser.userId,
-        email: newUser.email
+        userId: newUser.rows[0].id,
+        email: newUser.rows[0].email,
+        message: 'Registration successful'
       }), { status: 200 });
-    }
-    
-    if (action === 'login') {
-      const user = users.find(u => u.email === email && u.password === password);
-      
-      if (!user) {
+
+    } else if (action === 'login') {
+      // Hash password for comparison
+      const hashedPassword = simpleHash(password);
+
+      // Find user
+      const user = await query(
+        `SELECT id, email, created_at FROM users 
+         WHERE email = $1 AND password = $2 AND is_active = true`,
+        [email.toLowerCase().trim(), hashedPassword]
+      );
+
+      if (user.rows.length === 0) {
         return new Response(JSON.stringify({
           success: false,
           error: 'Invalid email or password'
         }), { status: 401 });
       }
-      
+
       // Update last login
-      user.lastLogin = new Date().toISOString();
-      await saveUsers(users);
-      
-      // Load user profile
-      const userProfile = await loadUserProfile(user.userId);
-      
+      await query(
+        'UPDATE users SET last_login = $1 WHERE id = $2',
+        [new Date().toISOString(), user.rows[0].id]
+      );
+
+      console.log(`✅ User logged in: ${email}`);
+
       return new Response(JSON.stringify({
         success: true,
-        userId: user.userId,
-        email: user.email,
-        profile: userProfile
+        userId: user.rows[0].id,
+        email: user.rows[0].email,
+        message: 'Login successful'
       }), { status: 200 });
-    }
-    
-    return new Response(JSON.stringify({
-      success: false,
-      error: 'Invalid action'
-    }), { status: 400 });
-    
-  } catch (error) {
-    return new Response(JSON.stringify({
-      success: false,
-      error: error.message
-    }), { status: 500 });
-  }
-}
-
-// New endpoint for profile management
-export async function PUT({ request }) {
-  try {
-    const { userId, profileData } = await request.json();
-    
-    if (!userId || !profileData) {
+    } else {
       return new Response(JSON.stringify({
         success: false,
-        error: 'User ID and profile data are required'
+        error: 'Invalid action'
       }), { status: 400 });
     }
-    
-    await saveUserProfile(userId, profileData);
-    
-    return new Response(JSON.stringify({
-      success: true,
-      message: 'Profile updated successfully'
-    }), { status: 200 });
-    
+
   } catch (error) {
+    console.error('Auth error:', error);
     return new Response(JSON.stringify({
       success: false,
-      error: error.message
+      error: 'Authentication failed: ' + error.message
     }), { status: 500 });
   }
 }

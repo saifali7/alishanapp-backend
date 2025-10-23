@@ -126,3 +126,28 @@ export async function handler(request) {
 if (NODE_ENV === 'development') {
   console.log(`🔧 Development server running on http://localhost:${PORT}`);
 }
+
+// Add this at the VERY END of server.js file:
+
+// Local development server (Render will ignore this)
+if (process.env.NODE_ENV === 'development') {
+  const port = process.env.PORT || 10000;
+  
+  // Create simple HTTP server for local testing
+  const server = {
+    async fetch(request) {
+      return await handler(request);
+    },
+    port: port
+  };
+  
+  console.log(`🔧 Development server would run on http://localhost:${port}`);
+  console.log(`🚀 Production server ready for Render deployment`);
+}
+
+// For Render - just export the handler
+console.log('✅ ALISHAN Backend initialized successfully');
+console.log('📡 Ready to handle requests on Render...');
+
+// Server initialization complete - ready for Render
+console.log('🚀 ALISHAN Backend initialized successfully on Render');

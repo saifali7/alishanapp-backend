@@ -105,3 +105,16 @@ export async function handler(request) {
 console.log('✅ ALISHAN Backend with PostgreSQL initialized successfully');
 console.log(`📊 Database: PostgreSQL (Render)`);
 console.log(`🌐 Environment: ${NODE_ENV}`);
+
+
+
+
+// Keep the server alive for Render
+console.log('🔄 Setting up server keep-alive...');
+
+// Simple interval to keep process alive
+setInterval(() => {
+  console.log('💓 Server heartbeat:', new Date().toISOString());
+}, 30000); // Log every 30 seconds
+
+console.log('🚀 ALISHAN Backend with PostgreSQL is LIVE!');

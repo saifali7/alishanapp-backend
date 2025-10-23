@@ -78,6 +78,3 @@ export async function GET({ request }) {
   }
 }
 
-
-// Add at the end of save-profile.js
-export { POST, GET };

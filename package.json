@@ -5,10 +5,11 @@
   "description": "ALISHAN Inventory Management Backend API",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node server.js"
   },
   "keywords": ["inventory", "api", "backend"],
-  "author": "saif-ali",
+  "author": "SAIF ALI",
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"

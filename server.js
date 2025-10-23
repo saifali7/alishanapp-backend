@@ -122,32 +122,20 @@ export async function handler(request) {
   return response;
 }
 
-// Local development ke liye
-if (NODE_ENV === 'development') {
-  console.log(`🔧 Development server running on http://localhost:${PORT}`);
-}
-
-// Add this at the VERY END of server.js file:
-
-// Local development server (Render will ignore this)
-if (process.env.NODE_ENV === 'development') {
-  const port = process.env.PORT || 10000;
-  
-  // Create simple HTTP server for local testing
-  const server = {
-    async fetch(request) {
-      return await handler(request);
-    },
-    port: port
-  };
-  
-  console.log(`🔧 Development server would run on http://localhost:${port}`);
-  console.log(`🚀 Production server ready for Render deployment`);
-}
-
-// For Render - just export the handler
+// Render keep-alive mechanism
 console.log('✅ ALISHAN Backend initialized successfully');
-console.log('📡 Ready to handle requests on Render...');
+console.log('📡 Server is ready to handle API requests');
 
-// Server initialization complete - ready for Render
-console.log('🚀 ALISHAN Backend initialized successfully on Render');
+// Keep the server alive for Render platform
+if (process.env.NODE_ENV === 'production') {
+  console.log('🔄 Setting up keep-alive for Render...');
+  
+  // Simple interval to keep process alive
+  setInterval(() => {
+    // Just keep the process running - no operation needed
+  }, 60000); // Check every minute
+  
+  console.log('✅ Keep-alive activated for Render platform');
+}
+
+console.log('🚀 ALISHAN Backend successfully deployed on Render!');

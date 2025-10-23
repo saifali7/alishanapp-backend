@@ -118,3 +118,47 @@ setInterval(() => {
 }, 30000); // Log every 30 seconds
 
 console.log('🚀 ALISHAN Backend with PostgreSQL is LIVE!');
+
+import http from 'http';
+
+// Simple HTTP server for port binding
+const server = http.createServer(async (req, res) => {
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Content-Type': 'application/json'
+  };
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, headers);
+    res.end();
+    return;
+  }
+
+  if (req.url === '/health' || req.url === '/') {
+    res.writeHead(200, headers);
+    res.end(JSON.stringify({
+      message: 'ALISHAN Backend API is running!',
+      timestamp: new Date().toISOString(),
+      database: 'PostgreSQL'
+    }));
+    return;
+  }
+
+  // For other routes, return not found
+  res.writeHead(404, headers);
+  res.end(JSON.stringify({ error: 'Not found' }));
+});
+
+// Start the server
+server.listen(10000, () => {
+  console.log('🌐 HTTP Server running on port 10000');
+  console.log('✅ Render port binding successful');
+  console.log('🚀 ALISHAN Backend with PostgreSQL is LIVE!');
+});
+
+// Keep-alive for Render
+setInterval(() => {
+  console.log('💓 Server heartbeat:', new Date().toISOString());
+}, 30000);

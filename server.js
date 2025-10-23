@@ -5,6 +5,12 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Environment variables use karein
+const PORT = process.env.PORT || 10000;
+const NODE_ENV = process.env.NODE_ENV || 'development';
+
+console.log(`🚀 Starting ALISHAN API in ${NODE_ENV} mode on port ${PORT}`);
+
 // Ensure data directories exist
 async function ensureDataDirectories() {
   const dirs = ['./user_data', './user_data/profiles'];
@@ -59,7 +65,9 @@ async function handleRequest(request) {
       return new Response(JSON.stringify({
         message: 'ALISHAN Backend API is running!',
         timestamp: new Date().toISOString(),
-        version: '1.0.0'
+        version: '1.0.0',
+        environment: NODE_ENV,
+        port: PORT
       }), { 
         status: 200,
         headers: { 'Content-Type': 'application/json' }
@@ -114,8 +122,7 @@ export async function handler(request) {
   return response;
 }
 
-// For local testing
-if (process.env.NODE_ENV !== 'production') {
-  const port = process.env.PORT || 10000;
-  console.log(`🚀 Server would start on port ${port} in local environment`);
+// Local development ke liye
+if (NODE_ENV === 'development') {
+  console.log(`🔧 Development server running on http://localhost:${PORT}`);
 }

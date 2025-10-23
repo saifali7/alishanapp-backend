@@ -1,26 +1,61 @@
 import pg from 'pg';
 const { Pool } = pg;
 
-// Render PostgreSQL connection
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
+console.log('🔌 Attempting PostgreSQL connection...');
+console.log('Database URL:', process.env.DATABASE_URL ? 'Present' : 'Missing');
 
-console.log('📊 PostgreSQL Database connected');
+let pool;
+
+try {
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL environment variable is missing');
+  }
+
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }, // Render PostgreSQL requires SSL
+    connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 30000,
+  });
+
+  // Test connection immediately
+  const client = await pool.connect();
+  console.log('✅ PostgreSQL Database connected successfully');
+  
+  // Test simple query
+  const result = await client.query('SELECT version()');
+  console.log('📊 PostgreSQL Version:', result.rows[0].version);
+  
+  client.release();
+  
+} catch (error) {
+  console.error('❌ PostgreSQL Connection failed:', error.message);
+  // Don't exit - let server start anyway
+}
 
 export async function query(text, params) {
+  if (!pool) {
+    throw new Error('Database not connected');
+  }
+  
   const client = await pool.connect();
   try {
     const result = await client.query(text, params);
     return result;
+  } catch (error) {
+    console.error('Query error:', error.message);
+    throw error;
   } finally {
     client.release();
   }
 }
 
-// Database initialization - tables create karega
 export async function initDB() {
+  if (!pool) {
+    console.log('⚠️  Database not connected, skipping initialization');
+    return false;
+  }
+
   try {
     console.log('🔄 Initializing database tables...');
 
@@ -74,8 +109,10 @@ export async function initDB() {
     `);
 
     console.log('✅ Database tables initialized successfully');
+    return true;
   } catch (error) {
     console.error('❌ Database initialization error:', error.message);
+    return false;
   }
 }
 

@@ -80,6 +80,8 @@ async function handleRequest(request) {
 
 // Create HTTP server for Render port binding
 const server = http.createServer(async (req, res) => {
+  console.log(`📨 Incoming request: ${req.method} ${req.url}`);
+  
   // CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -133,14 +135,35 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-// Start the HTTP server
-server.listen(PORT, '0.0.0.0', () => {
+// Start the HTTP server with error handling
+server.listen(PORT, '0.0.0.0', (err) => {
+  if (err) {
+    console.error('❌ Server failed to start:', err);
+    process.exit(1);
+  }
   console.log(`🌐 HTTP Server running on port ${PORT}`);
   console.log('✅ Render port binding successful');
   console.log('🚀 ALISHAN Backend with PostgreSQL is LIVE!');
+  
+  // Test the server immediately after start
+  const testClient = http.request({
+    hostname: 'localhost',
+    port: PORT,
+    path: '/health',
+    method: 'GET',
+    timeout: 5000
+  }, (res) => {
+    console.log(`🧪 Health check test: ${res.statusCode}`);
+  });
+
+  testClient.on('error', () => {
+    console.log('⚠️  Health check failed (server starting...)');
+  });
+
+  testClient.end();
 });
 
-// Render also requires this export for serverless
+// Render handler export (for serverless)
 export async function handler(request) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -149,12 +172,14 @@ export async function handler(request) {
     'Content-Type': 'application/json'
   };
   
+  // Handle preflight requests
   if (request.method === 'OPTIONS') {
     return new Response(null, { headers });
   }
   
   const response = await handleRequest(request);
   
+  // Add CORS headers to response
   for (const [key, value] of Object.entries(headers)) {
     response.headers.set(key, value);
   }
@@ -168,3 +193,5 @@ setInterval(() => {
 }, 30000);
 
 console.log('✅ ALISHAN Backend with PostgreSQL initialized successfully');
+console.log(`📊 Database: PostgreSQL (Render)`);
+console.log(`🌐 Environment: ${NODE_ENV}`);

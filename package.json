@@ -2,16 +2,19 @@
   "name": "alishan-backend",
   "version": "1.0.0",
   "type": "module",
-  "description": "ALISHAN Inventory Management Backend API",
+  "description": "ALISHAN Inventory Management Backend API with PostgreSQL",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"
   },
-  "keywords": ["inventory", "api", "backend"],
-  "author": "SAIF ALI",
+  "keywords": ["inventory", "api", "backend", "postgresql"],
+  "author": "Your Name",
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "pg": "^8.11.3"
   }
 }

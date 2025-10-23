@@ -77,3 +77,7 @@ export async function GET({ request }) {
     }), { status: 500 });
   }
 }
+
+
+// Add at the end of save-profile.js
+export { POST, GET };

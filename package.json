@@ -1,8 +1,16 @@
 {
-  "name": "alishan-api",
+  "name": "alishan-backend",
   "version": "1.0.0",
   "type": "module",
-  "dependencies": {
-    "fs": "latest"
+  "description": "ALISHAN Inventory Management Backend API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": ["inventory", "api", "backend"],
+  "author": "saif-ali",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

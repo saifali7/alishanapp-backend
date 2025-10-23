@@ -37,3 +37,7 @@ export async function POST({ request }) {
     }), { status: 500 });
   }
 }
+
+
+// Add at the end of check-user.js
+export { POST };

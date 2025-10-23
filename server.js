@@ -1,29 +1,9 @@
-// server.js - Aapka original code with fixes
 import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Import handlers correctly
-async import('./auth.js').then(module => {
-  authHandler = module;
-});
-
-async import('./save-data.js').then(module => {
-  saveDataHandler = module;
-});
-
-async import('./save-profile.js').then(module => {
-  saveProfileHandler = module;
-});
-
-async import('./check-user.js').then(module => {
-  checkUserHandler = module;
-});
-
-let authHandler, saveDataHandler, saveProfileHandler, checkUserHandler;
 
 // Ensure data directories exist
 async function ensureDataDirectories() {
@@ -44,25 +24,19 @@ async function handleRequest(request) {
   const pathname = url.pathname;
   
   try {
-    // Ensure handlers are loaded
-    if (!authHandler || !saveDataHandler || !saveProfileHandler || !checkUserHandler) {
-      await Promise.all([
-        import('./auth.js').then(module => authHandler = module),
-        import('./save-data.js').then(module => saveDataHandler = module),
-        import('./save-profile.js').then(module => saveProfileHandler = module),
-        import('./check-user.js').then(module => checkUserHandler = module)
-      ]);
-    }
-
     if (pathname === '/api/auth' && request.method === 'POST') {
+      const authHandler = await import('./auth.js');
       return await authHandler.POST({ request });
     }
     
     else if (pathname === '/api/check-user' && request.method === 'POST') {
+      const checkUserHandler = await import('./check-user.js');
       return await checkUserHandler.POST({ request });
     }
     
     else if (pathname === '/api/save-data') {
+      const saveDataHandler = await import('./save-data.js');
+      
       if (request.method === 'POST') {
         return await saveDataHandler.POST({ request });
       } else if (request.method === 'GET') {
@@ -71,6 +45,8 @@ async function handleRequest(request) {
     }
     
     else if (pathname === '/api/save-profile') {
+      const saveProfileHandler = await import('./save-profile.js');
+      
       if (request.method === 'POST') {
         return await saveProfileHandler.POST({ request });
       } else if (request.method === 'GET') {

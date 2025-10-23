@@ -1,4 +1,5 @@
 import { initDB } from './database.js';
+import http from 'http';
 
 const PORT = process.env.PORT || 10000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
@@ -77,52 +78,9 @@ async function handleRequest(request) {
   }
 }
 
-// Render requires this export
-export async function handler(request) {
-  // Add CORS headers
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Content-Type': 'application/json'
-  };
-  
-  // Handle preflight requests
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { headers });
-  }
-  
-  const response = await handleRequest(request);
-  
-  // Add CORS headers to response
-  for (const [key, value] of Object.entries(headers)) {
-    response.headers.set(key, value);
-  }
-  
-  return response;
-}
-
-console.log('✅ ALISHAN Backend with PostgreSQL initialized successfully');
-console.log(`📊 Database: PostgreSQL (Render)`);
-console.log(`🌐 Environment: ${NODE_ENV}`);
-
-
-
-
-// Keep the server alive for Render
-console.log('🔄 Setting up server keep-alive...');
-
-// Simple interval to keep process alive
-setInterval(() => {
-  console.log('💓 Server heartbeat:', new Date().toISOString());
-}, 30000); // Log every 30 seconds
-
-console.log('🚀 ALISHAN Backend with PostgreSQL is LIVE!');
-
-import http from 'http';
-
-// Simple HTTP server for port binding
+// Create HTTP server for Render port binding
 const server = http.createServer(async (req, res) => {
+  // CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -130,35 +88,83 @@ const server = http.createServer(async (req, res) => {
     'Content-Type': 'application/json'
   };
 
+  // Handle preflight requests
   if (req.method === 'OPTIONS') {
     res.writeHead(204, headers);
     res.end();
     return;
   }
 
-  if (req.url === '/health' || req.url === '/') {
-    res.writeHead(200, headers);
-    res.end(JSON.stringify({
-      message: 'ALISHAN Backend API is running!',
-      timestamp: new Date().toISOString(),
-      database: 'PostgreSQL'
-    }));
-    return;
-  }
+  try {
+    // Convert Node.js request to Fetch API request
+    let body = '';
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      const chunks = [];
+      for await (const chunk of req) {
+        chunks.push(chunk);
+      }
+      body = Buffer.concat(chunks).toString();
+    }
 
-  // For other routes, return not found
-  res.writeHead(404, headers);
-  res.end(JSON.stringify({ error: 'Not found' }));
+    const request = new Request(`http://${req.headers.host}${req.url}`, {
+      method: req.method,
+      headers: req.headers,
+      body: body || null
+    });
+
+    // Handle the request using your existing logic
+    const response = await handleRequest(request);
+
+    // Set response headers
+    const responseHeaders = { ...headers };
+    for (const [key, value] of response.headers) {
+      responseHeaders[key] = value;
+    }
+
+    // Send response
+    res.writeHead(response.status, responseHeaders);
+    const responseBody = await response.text();
+    res.end(responseBody);
+
+  } catch (error) {
+    console.error('HTTP Server error:', error);
+    res.writeHead(500, headers);
+    res.end(JSON.stringify({ error: 'Internal server error' }));
+  }
 });
 
-// Start the server
-server.listen(10000, () => {
-  console.log('🌐 HTTP Server running on port 10000');
+// Start the HTTP server
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🌐 HTTP Server running on port ${PORT}`);
   console.log('✅ Render port binding successful');
   console.log('🚀 ALISHAN Backend with PostgreSQL is LIVE!');
 });
 
-// Keep-alive for Render
+// Render also requires this export for serverless
+export async function handler(request) {
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Content-Type': 'application/json'
+  };
+  
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { headers });
+  }
+  
+  const response = await handleRequest(request);
+  
+  for (const [key, value] of Object.entries(headers)) {
+    response.headers.set(key, value);
+  }
+  
+  return response;
+}
+
+// Keep-alive heartbeat
 setInterval(() => {
   console.log('💓 Server heartbeat:', new Date().toISOString());
 }, 30000);
+
+console.log('✅ ALISHAN Backend with PostgreSQL initialized successfully');

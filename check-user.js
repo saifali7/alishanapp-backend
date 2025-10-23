@@ -38,6 +38,3 @@ export async function POST({ request }) {
   }
 }
 
-
-// Add at the end of check-user.js
-export { POST };

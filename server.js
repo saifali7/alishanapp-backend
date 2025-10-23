@@ -1,9 +1,27 @@
+// server.js - Aapka original code with fixes
 import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Import handlers correctly
+async import('./auth.js').then(module => {
+  authHandler = module;
+});
+
+async import('./save-data.js').then(module => {
+  saveDataHandler = module;
+});
+
+async import('./save-profile.js').then(module => {
+  saveProfileHandler = module;
+});
+
+async import('./check-user.js').then(module => {
+  checkUserHandler = module;
+});
 
 let authHandler, saveDataHandler, saveProfileHandler, checkUserHandler;
 
@@ -118,4 +136,10 @@ export async function handler(request) {
   }
   
   return response;
+}
+
+// For local testing
+if (process.env.NODE_ENV !== 'production') {
+  const port = process.env.PORT || 10000;
+  console.log(`🚀 Server would start on port ${port} in local environment`);
 }

@@ -152,3 +152,6 @@ export async function PUT({ request }) {
     }), { status: 500 });
   }
 }
+
+// Add at the end of auth.js
+export { POST, PUT };

@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import http from 'http';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -94,8 +95,8 @@ async function handleRequest(request) {
   }
 }
 
-// Render requires this export
-export async function handler(request) {
+// Main request handler for both Render and HTTP server
+async function requestHandler(req, res) {
   // Add CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -105,37 +106,76 @@ export async function handler(request) {
   };
   
   // Handle preflight requests
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { headers });
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, headers);
+    res.end();
+    return;
   }
   
-  // Ensure directories exist
+  try {
+    // Ensure directories exist
+    await ensureDataDirectories();
+    
+    // Convert Node.js request to Fetch API request
+    let body = '';
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      const chunks = [];
+      for await (const chunk of req) {
+        chunks.push(chunk);
+      }
+      body = Buffer.concat(chunks).toString();
+    }
+    
+    const request = new Request(`http://${req.headers.host}${req.url}`, {
+      method: req.method,
+      headers: req.headers,
+      body: body || null
+    });
+    
+    // Handle the request using your existing logic
+    const response = await handleRequest(request);
+    
+    // Set response headers
+    const responseHeaders = { ...headers };
+    for (const [key, value] of response.headers) {
+      responseHeaders[key] = value;
+    }
+    
+    // Send response
+    res.writeHead(response.status, responseHeaders);
+    const responseBody = await response.text();
+    res.end(responseBody);
+    
+  } catch (error) {
+    console.error('Request handling error:', error);
+    res.writeHead(500, headers);
+    res.end(JSON.stringify({ error: 'Internal server error' }));
+  }
+}
+
+// Create HTTP server for port binding (REQUIRED FOR RENDER)
+const server = http.createServer(requestHandler);
+
+// Start the server
+server.listen(PORT, () => {
+  console.log(`✅ ALISHAN Backend initialized successfully`);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📡 Ready to handle API requests`);
+  console.log(`🌐 Health check: http://localhost:${PORT}/health`);
+  console.log(`🔧 Environment: ${NODE_ENV}`);
+});
+
+// Render also requires this export for serverless
+export async function handler(request) {
   await ensureDataDirectories();
-  
-  const response = await handleRequest(request);
-  
-  // Add CORS headers to response
-  for (const [key, value] of Object.entries(headers)) {
-    response.headers.set(key, value);
-  }
-  
-  return response;
+  return await handleRequest(request);
 }
 
-// Render keep-alive mechanism
-console.log('✅ ALISHAN Backend initialized successfully');
-console.log('📡 Server is ready to handle API requests');
-
-// Keep the server alive for Render platform
-if (process.env.NODE_ENV === 'production') {
-  console.log('🔄 Setting up keep-alive for Render...');
-  
-  // Simple interval to keep process alive
-  setInterval(() => {
-    // Just keep the process running - no operation needed
-  }, 60000); // Check every minute
-  
-  console.log('✅ Keep-alive activated for Render platform');
-}
-
-console.log('🚀 ALISHAN Backend successfully deployed on Render!');
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('🛑 Received SIGTERM, shutting down gracefully...');
+  server.close(() => {
+    console.log('✅ Server closed');
+    process.exit(0);
+  });
+});
